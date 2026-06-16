@@ -95,3 +95,49 @@ def build_descriptor(sampled: np.ndarray, perimeter:float, offsets: list[int] = 
         rolled = np.roll(sampled, -d, axis=0)  # (N, 2)
         dists = np.linalg.norm(sampled-rolled, axis=1) # (N,)
         rows.append(dists/perimeter)
+        
+    # Stack offsets as columns: shape (n, len(offsets)), then flatten row-major.
+    matrix = np.column_stack(rows)  # (n, len(offsets))
+    return matrix.ravel().astype(np.float32)
+
+def reverse_sampled(sampled: np.ndarray) -> np.ndarray:
+    """
+    Reverse the point ordering of a sampled contour.
+
+    Comparing a query against both the forward and reversed template
+    handles the case where OpenCV traces the boundary in a different
+    direction (CW vs CCW) between images.
+    """
+    return sampled[::-1].copy()
+
+def descriptor_distance_cyclic(
+    query_desc: np.ndarray,
+    template_desc: np.ndarray,
+    n_points: int,
+    n_offsets: int,
+    use_reversal: bool = True,
+) -> float:
+    """
+    Compute the minimum L2 distance between two descriptors under all cyclic shifts.
+    use_reversal is accepted for API compatibility but reversal must be handled by
+    passing the pre-computed reversed descriptor from the DB.
+    """
+    q = query_desc.reshape(n_points, n_offsets)
+    t = template_desc.reshape(n_points, n_offsets)
+    return float(_min_cyclic_distance(q, t))
+
+def _min_cyclic_distance(a: np.ndarray, b: np.ndarray) -> float:
+    """
+    Minimum L2 distance between two (n, k) descriptor matrices under all n cyclic shifts.
+    """
+    n = len(a)
+    # Stack all cyclic shifts of b into (n, n, k) and compare against a (n, k).
+    # More memory-efficient: iterate shifts but keep it in numpy.
+    min_dist = np.inf
+    for shift in range(n):
+        shifted = np.roll(b, shift, axis=0)
+        diff = a - shifted
+        dist = np.sqrt(np.sum(diff * diff))
+        if dist < min_dist:
+            min_dist = dist
+    return min_dist
