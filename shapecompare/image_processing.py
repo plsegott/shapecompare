@@ -40,7 +40,7 @@ def load_image_bytes(data: bytes) -> np.ndarray:
 def _corner_brightness(img: np.ndarray, fraction: float = 0.05) -> float:
     
     h, w = img.shape[:2]
-    gray = cv.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img
     ch = max(1, int(h* fraction))
     cw = max(1, int(w* fraction))
     corners = np.concatenate([
@@ -92,11 +92,7 @@ def _pick_better_binary(b1: np.ndarray, b2: np.ndarray, shape: tuple) -> np.ndar
 
     return b1 if score(b1) >= score(b2) else b2
 
-def extract_main_contour(
-    img: np.ndarray,
-    morph_kernel_size: int = 3,
-    morph_iterations: int = 1,
-) -> ContourResult:
+def extract_main_contour(img: np.ndarray) -> ContourResult:
     """
     Full pipeline: BGR image → largest external contour.
 
@@ -166,3 +162,21 @@ def extract_main_contour(
         perimeter=float(perimeter),
         area=float(area),
     )
+
+
+def remove_background(result: ContourResult) -> np.ndarray:
+    """
+    Return a BGRA image with background pixels set to alpha=0.
+
+    Uses the mask already computed by extract_main_contour — no extra
+    processing. Pass the result straight from extract_main_contour.
+
+    Returns
+    -------
+    np.ndarray
+        BGRA image (H, W, 4), dtype uint8. Object pixels are fully opaque,
+        background pixels are fully transparent.
+    """
+    bgra = cv2.cvtColor(result.original, cv2.COLOR_BGR2BGRA)
+    bgra[:, :, 3] = result.binary  # binary is already 0/255
+    return bgra

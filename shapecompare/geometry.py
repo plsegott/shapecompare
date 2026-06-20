@@ -21,24 +21,22 @@ DEFAULT_N = 64
 OFFSETS = [2, 4, 8, 16, 32]
 
 
-def sample_contour_unifor(pts: np.ndarray, n: int = DEFAULT_N) -> np.ndarray:
+def sample_contour_uniform(pts: np.ndarray, n: int = DEFAULT_N) -> np.ndarray:
     """
-    
-    Resample and ordered contour points to a fixed number of points, uniformly spaced along the contour.
-    
+    Resample an ordered contour to n points uniformly spaced by arc length.
+
     Parameters
     ----------
     pts : np.ndarray
         An (M, 2) array of (x, y) coordinates representing the contour points.
     n : int, optional
         The number of points to sample along the contour (default is 64).
-    
+
     Returns
     -------
     np.ndarray
-        An (n, 2) array of (x, y) coordinates representing the uniformly sampled contour points.
-    
-    Uniformly sample n points along the contour defined by pts."""
+        An (n, 2) array of (x, y) coordinates, uniformly sampled by arc length.
+    """
     
     if len(pts) < 2:
         raise ValueError("At least 2 points are required to sample a contour.")
@@ -50,7 +48,7 @@ def sample_contour_unifor(pts: np.ndarray, n: int = DEFAULT_N) -> np.ndarray:
     diffs = np.diff(closed, axis=0) # (M, 2)
     seg_lengths = np.linalg.norm(diffs, axis=1) # (M,)
     
-    cumlen = np.concatenate([0.0], np.cumsum(seg_lengths)) # (M+1,)
+    cumlen = np.concatenate([[0.0], np.cumsum(seg_lengths)]) # (M+1,)
     total = cumlen[-1]
     
     if total < 1e-9:
